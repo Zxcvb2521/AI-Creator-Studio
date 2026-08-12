@@ -1,4 +1,5 @@
 export type MediaKind = 'image' | 'video' | 'audio' | 'voice';
+export type JobState = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface GenerationRequest {
   kind: MediaKind;
@@ -12,12 +13,13 @@ export interface GenerationResult {
   jobId: string;
   kind: MediaKind;
   files: string[];
+  duration?: number;
   metadata: Record<string, unknown>;
 }
 
 export interface JobSnapshot {
   id: string;
-  state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+  state: JobState;
   progress?: number;
   message?: string;
   result?: GenerationResult;
@@ -30,8 +32,15 @@ export interface DeepyCapability {
   entrypoint?: string;
 }
 
+export interface EngineCapabilities {
+  media: MediaKind[];
+  deepy: DeepyCapability;
+  engine: string;
+  version?: string;
+}
+
 export interface WanGPAdapter {
-  capabilities(): Promise<{ media: MediaKind[]; deepy: DeepyCapability }>;
+  capabilities(): Promise<EngineCapabilities>;
   generate(request: GenerationRequest): Promise<JobSnapshot>;
   getJob(jobId: string): Promise<JobSnapshot>;
   cancelJob(jobId: string): Promise<void>;
