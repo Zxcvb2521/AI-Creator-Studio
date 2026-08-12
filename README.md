@@ -55,4 +55,4 @@ installer/    platform packaging
 
 ## License
 
-See the upstream WanGP project for engine licensing. Application licensing will be defined separately.
+Информацию о лицензировании ядра см. в исходном проекте WanGP. Лицензирование приложения будет определено отдельно.
