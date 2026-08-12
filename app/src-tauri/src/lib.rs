@@ -1,5 +1,6 @@
 mod capabilities;
 mod hardware;
+mod model_catalog;
 mod models;
 mod startup;
 mod system_check;
@@ -34,6 +35,8 @@ pub fn system_check() -> system_check::SystemCheck { system_check::run() }
 pub fn capabilities() -> capabilities::Capabilities { capabilities::detect() }
 #[tauri::command]
 pub fn model_discovery() -> models::ModelDiscovery { models::discover() }
+#[tauri::command]
+pub fn model_catalog() -> model_catalog::ModelCatalog { model_catalog::discover() }
 
 #[tauri::command]
 pub fn start_engine() -> Result<String, String> {
@@ -51,6 +54,6 @@ fn startup() -> startup::StartupReport { startup::run() }
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default().plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![engine_status, hardware_info, system_check, capabilities, model_discovery, startup, start_engine, stop_engine])
+        .invoke_handler(tauri::generate_handler![engine_status, hardware_info, system_check, capabilities, model_discovery, model_catalog, startup, start_engine, stop_engine])
         .run(tauri::generate_context!()).expect("error while running AI Creator Studio");
 }
