@@ -1,0 +1,19 @@
+.timeline-panel { margin-top: 18px; border: 1px solid #252e3b; border-radius: 12px; background: #0f141b; overflow: hidden; }
+.timeline-head { display: flex; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #252e3b; color: #c7d0dc; font-size: 13px; }
+.timeline-head span { color: #6f7b8c; }
+.timeline-ruler { position: relative; height: 26px; margin-left: 120px; background: #0b0f14; border-bottom: 1px solid #222a35; overflow: hidden; }
+.timeline-ruler span { position: absolute; top: 7px; color: #657184; font-size: 10px; }
+.track { display: flex; min-height: 54px; border-bottom: 1px solid #202833; }
+.track-label { width: 120px; flex: 0 0 120px; padding: 19px 14px; color: #8995a6; font-size: 11px; background: #0d1117; }
+.track-lane { position: relative; min-width: 2200px; flex: 1; background-image: linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 70px 100%; }
+.timeline-item { position: absolute; top: 8px; height: 38px; border: 1px solid #4a5667; border-radius: 6px; background: #252e3a; color: #dbe2ea; text-align: left; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.timeline-item:hover { background: #303b4a; }
+.timeline-help { display: block; padding: 8px 14px; color: #5f6b7c; }
+.preview { position: relative; min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 1px solid #252e3b; border-radius: 12px; background: #090c10; overflow: hidden; }
+.preview video, .preview img { max-width: 100%; max-height: 460px; object-fit: contain; }
+.preview audio { width: min(700px, 90%); }
+.preview-name { color: #a4afbf; font-size: 12px; }
+.preview-error { color: #ff9da8; font-size: 12px; }
+.preview.empty { color: #697587; font-size: 13px; }
+.preview.audio { padding: 30px; }
+.audio-icon { font-size: 48px; color: #7f8b9d; }
