@@ -19,6 +19,10 @@ fn runtime_dir() -> PathBuf {
     if let Ok(value) = env::var("WAN2GP_RUNTIME") { return PathBuf::from(value); }
     engine_dir().join("runtime")
 }
+fn bridge_script() -> PathBuf {
+    if let Ok(value) = env::var("AI_CREATOR_BRIDGE") { return PathBuf::from(value); }
+    PathBuf::from("engine/wan-gp-adapter/src/wan_gp_bridge.py")
+}
 
 #[tauri::command]
 pub fn engine_status() -> EngineStatus { let engine = engine_dir(); let runtime = runtime_dir(); let running = std::net::TcpStream::connect("127.0.0.1:18765").is_ok(); EngineStatus { running, runtime_dir: runtime.to_string_lossy().into_owned(), engine_dir: engine.to_string_lossy().into_owned() } }
@@ -34,13 +38,13 @@ pub fn model_discovery() -> models::ModelDiscovery { models::discover() }
 #[tauri::command]
 pub fn start_engine() -> Result<String, String> {
     if std::net::TcpStream::connect("127.0.0.1:18765").is_ok() { return Ok("WanGP bridge already running".into()); }
-    let root = engine_dir(); let launcher = root.join("start_studio.py");
-    if !launcher.exists() { return Err(format!("WanGP launcher not found: {}", launcher.display())); }
-    Command::new("python").arg(&launcher).current_dir(&root).spawn().map_err(|e| format!("Failed to start WanGP: {e}"))?;
-    Ok("WanGP start requested".into())
+    let script = bridge_script();
+    if !script.exists() { return Err(format!("AI Creator WanGP bridge not found: {}", script.display())); }
+    Command::new("python").arg(&script).spawn().map_err(|e| format!("Failed to start WanGP bridge: {e}"))?;
+    Ok("WanGP API bridge start requested".into())
 }
 #[tauri::command]
-pub fn stop_engine() -> Result<String, String> { Ok("Stop is delegated to the configured WanGP runtime lifecycle".into()) }
+pub fn stop_engine() -> Result<String, String> { Ok("Bridge lifecycle is managed by the Studio process".into()) }
 #[tauri::command]
 fn startup() -> startup::StartupReport { startup::run() }
 
