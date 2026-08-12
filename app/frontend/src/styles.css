@@ -1,7 +1,7 @@
 * { box-sizing: border-box; }
 :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #e9edf5; background: #0c0f14; }
 body { margin: 0; min-width: 1100px; min-height: 100vh; background: radial-gradient(circle at 70% 0%, #1a2230 0, #0c0f14 45%); }
-button { font: inherit; }
+button, textarea { font: inherit; }
 .shell { min-height: 100vh; }
 .topbar { height: 82px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; border-bottom: 1px solid #252c37; background: rgba(12,15,20,.92); }
 .eyebrow { font-size: 11px; letter-spacing: .18em; color: #8390a3; }
@@ -15,20 +15,21 @@ h1 { margin: 4px 0 0; font-size: 24px; }
 .nav { width: 100%; border: 0; background: transparent; color: #8994a5; text-align: left; padding: 12px 14px; border-radius: 8px; cursor: pointer; margin-bottom: 3px; }
 .nav:hover, .nav.active { background: #171d27; color: #f2f5f9; }
 .content { flex: 1; padding: 32px; max-width: 1500px; }
-.hero { display: flex; justify-content: space-between; gap: 30px; padding: 30px; border: 1px solid #28313e; border-radius: 16px; background: linear-gradient(135deg, #151b24, #10151d); }
-.badge { font-size: 10px; letter-spacing: .15em; color: #8e9bae; }
-h2 { max-width: 700px; font-size: 31px; margin: 12px 0; }
-.hero p { max-width: 700px; color: #99a5b5; line-height: 1.6; }
-.engine-card { min-width: 260px; padding: 20px; border-left: 1px solid #2b3441; display: flex; flex-direction: column; justify-content: space-between; }
-.engine-card strong { font-size: 12px; letter-spacing: .14em; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.actions button { border: 1px solid #374150; background: #1b222d; color: #e9edf5; border-radius: 7px; padding: 9px 12px; cursor: pointer; }
-.actions button:disabled { opacity: .4; cursor: default; }
-.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
-.card { min-height: 145px; padding: 20px; border: 1px solid #252e3b; border-radius: 12px; background: #11161e; }
-.card-icon { color: #a8b4c5; }
-.card h3 { margin: 20px 0 8px; font-size: 16px; }
-.card p { margin: 0; color: #778396; font-size: 12px; line-height: 1.5; }
-.error { margin-top: 18px; padding: 13px; border: 1px solid #633e45; border-radius: 8px; color: #ffb7bf; background: #25161a; }
-.diagnostics { display: grid; grid-template-columns: 90px 1fr; gap: 8px 14px; margin-top: 18px; padding: 16px; border: 1px solid #252e3b; border-radius: 10px; color: #7f8b9c; font-size: 11px; }
+.generator { display: flex; gap: 20px; align-items: end; justify-content: space-between; padding: 24px; border: 1px solid #28313e; border-radius: 14px; background: #111720; }
+h2 { margin: 8px 0 12px; font-size: 27px; }
+.generator textarea { display: block; width: min(760px, 60vw); min-height: 80px; resize: vertical; border: 1px solid #303b49; border-radius: 8px; background: #0b0f15; color: #e9edf5; padding: 12px; outline: none; }
+.generator textarea:focus { border-color: #556477; }
+.primary { border: 1px solid #667386; background: #dce3eb; color: #0d1117; border-radius: 8px; padding: 11px 17px; cursor: pointer; font-weight: 650; white-space: nowrap; }
+.primary:disabled { opacity: .45; cursor: default; }
+.error { margin-top: 14px; padding: 13px; border: 1px solid #633e45; border-radius: 8px; color: #ffb7bf; background: #25161a; }
+.studio-grid { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 14px; margin-top: 18px; }
+.assets { border: 1px solid #252e3b; border-radius: 12px; background: #11161e; padding: 14px; min-height: 250px; }
+.panel-title { display: flex; justify-content: space-between; color: #b7c1cf; font-size: 13px; margin-bottom: 10px; }
+.panel-title span { color: #6f7b8c; }
+.asset { width: 100%; text-align: left; border: 1px solid transparent; border-radius: 7px; background: #171d26; color: #cbd4df; padding: 10px; margin-bottom: 7px; cursor: pointer; }
+.asset.selected { border-color: #5d6a7b; background: #202833; }
+.asset strong, .asset small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asset small { color: #718093; margin-top: 4px; font-size: 10px; }
+.empty-assets { color: #697587; font-size: 12px; padding: 20px 5px; }
 code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #b8c2d0; }
+.diagnostics { display: grid; grid-template-columns: 90px 1fr; gap: 8px 14px; margin-top: 18px; padding: 16px; border: 1px solid #252e3b; border-radius: 10px; color: #7f8b9c; font-size: 11px; }
