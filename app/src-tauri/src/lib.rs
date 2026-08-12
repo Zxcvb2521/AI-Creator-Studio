@@ -1,4 +1,5 @@
 mod hardware;
+mod system_check;
 
 use serde::Serialize;
 use std::{env, path::PathBuf, process::Command};
@@ -33,6 +34,9 @@ fn engine_status() -> EngineStatus {
 fn hardware_info() -> hardware::HardwareInfo { hardware::detect() }
 
 #[tauri::command]
+fn system_check() -> system_check::SystemCheck { system_check::run() }
+
+#[tauri::command]
 fn start_engine() -> Result<String, String> {
     if std::net::TcpStream::connect("127.0.0.1:18765").is_ok() { return Ok("WanGP bridge already running".into()); }
     let root = engine_dir();
@@ -51,7 +55,7 @@ fn stop_engine() -> Result<String, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![engine_status, hardware_info, start_engine, stop_engine])
+        .invoke_handler(tauri::generate_handler![engine_status, hardware_info, system_check, start_engine, stop_engine])
         .run(tauri::generate_context!())
         .expect("error while running AI Creator Studio");
 }
