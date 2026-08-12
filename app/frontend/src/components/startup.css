@@ -1,0 +1,14 @@
+.startup-screen { min-height: 100vh; display: grid; place-items: center; background: #090c11; }
+.startup-card { width: min(620px, calc(100vw - 48px)); padding: 38px; border: 1px solid #293341; border-radius: 16px; background: #111720; box-shadow: 0 24px 80px rgba(0,0,0,.35); }
+.startup-card h1 { margin: 10px 0 6px; font-size: 28px; }
+.startup-subtitle { margin: 0 0 28px; color: #7f8b9d; font-size: 13px; }
+.startup-steps { display: grid; gap: 8px; }
+.startup-step { display: flex; align-items: center; gap: 13px; min-height: 58px; padding: 10px 12px; border: 1px solid #242d38; border-radius: 9px; background: #0d1219; }
+.startup-step strong, .startup-step small { display: block; }
+.startup-step strong { font-size: 13px; color: #d9e0e9; }
+.startup-step small { margin-top: 4px; color: #707d8f; font-size: 11px; }
+.check { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 50%; background: #202934; color: #94a0b0; }
+.check.ready { background: #193429; color: #70d49e; }
+.check.failed, .check.blocked, .check.timeout { background: #3b2026; color: #ff9ba8; }
+.startup-loading { margin-top: 18px; color: #6e7a8c; font-size: 12px; }
+.startup-retry { margin-top: 18px; }
