@@ -6,11 +6,12 @@ pub struct ModelEntry { pub id: String, pub label: String, pub kind: String, pub
 #[derive(Debug, Serialize)]
 pub struct ModelCatalog { pub models: Vec<ModelEntry>, pub source: String, pub error: Option<String> }
 
-fn engine_root() -> PathBuf { env::var("WAN2GP_ROOT").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("Wan2GP")) }
+fn engine_root() -> PathBuf { env::var("WAN2GP_ROOT").or_else(|_| env::var("WAN_GP_ROOT")).map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("Wan2GP")) }
 fn adapter_script() -> PathBuf {
+    if let Ok(value) = env::var("AI_CREATOR_WANGP_ADAPTER") { return PathBuf::from(value); }
     if let Ok(value) = env::var("AI_CREATOR_WAN2GP_ADAPTER") { return PathBuf::from(value); }
-    if let Ok(value) = env::var("AI_CREATOR_STUDIO_ROOT") { return PathBuf::from(value).join("engine/wan2gp-adapter/wan2gp_api.py"); }
-    PathBuf::from("engine/wan2gp-adapter/wan2gp_api.py")
+    if let Ok(value) = env::var("AI_CREATOR_STUDIO_ROOT") { return PathBuf::from(value).join("engine/wan-gp-adapter/wan_gp_api.py"); }
+    PathBuf::from("engine/wan-gp-adapter/wan_gp_api.py")
 }
 fn field(v: &serde_json::Value, keys: &[&str], fallback: String) -> String { keys.iter().find_map(|k| v.get(*k).and_then(|x| x.as_str()).map(str::to_owned)).unwrap_or(fallback) }
 
