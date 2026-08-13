@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -16,5 +19,11 @@
     "react-dom": "latest",
     "@tauri-apps/api": "latest"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "vitest": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitest/coverage-v8": "latest",
+    "jsdom": "latest"
+  }
 }

@@ -1,16 +1,44 @@
+```
+# Dependencies
 node_modules/
-dist/
-target/
+package-lock.json
+
+# Test coverage and cache
+**/.nyc_output/
+**/coverage/
+**/temp/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+
+# Build outputs
+**/dist/
+**/build/
+**/target/
+**/out/
+
+# Local configuration
 .env
+.env.local
 .env.*
-!.env.example
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-models/
-outputs/
-projects/local/
-*.log
+!env.example
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS files
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
+
+# Ignore lock files in general
+**/package-lock.json
+**/yarn.lock
+**/Cargo.lock
+```
