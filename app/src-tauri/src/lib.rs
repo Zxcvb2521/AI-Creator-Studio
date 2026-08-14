@@ -1,3 +1,4 @@
+mod assets;
 mod capabilities;
 mod hardware;
 mod jobs;
@@ -9,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{env, fs, path::PathBuf};
 use std::sync::OnceLock;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize)]
 pub struct EngineStatus { pub running: bool, pub runtime_dir: String, pub engine_dir: String }
@@ -72,8 +74,22 @@ pub fn generate(model_type: String, settings: Value) -> Result<String, String> {
 
 #[tauri::command]
 pub fn generation_status(job_id: String) -> Result<jobs::JobSnapshot, String> { job_manager().get(&job_id) }
+
+#[tauri::command]
+pub fn record_generation_assets(job_id: String) -> Result<Vec<assets::AssetRecord>, String> {
+    let job = job_manager().get(&job_id)?;
+    if !matches!(job.state, jobs::JobState::Completed) { return Err("Generation job is not completed".into()); }
+    let result = job.result.ok_or_else(|| "Generation job has no result".to_string())?;
+    let model_type = result.get("model_type").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+    let created_at = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| format!("Clock error: {e}"))?.as_secs();
+    assets::from_generation(runtime_dir(), &result, model_type, created_at)
+}
+
+#[tauri::command]
+pub fn asset_catalog() -> Result<Vec<assets::AssetRecord>, String> { assets::list(runtime_dir()) }
+
 #[tauri::command] pub fn stop_engine() -> Result<String, String> { Ok("WanGP adapter is invoked per operation; no persistent process to stop".into()) }
 #[tauri::command] fn startup() -> startup::StartupReport { startup::run() }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() { tauri::Builder::default().plugin(tauri_plugin_shell::init()).invoke_handler(tauri::generate_handler![engine_status, hardware_info, system_check, capabilities, model_catalog, model_schema, startup, start_engine, generate, generation_status, stop_engine]).run(tauri::generate_context!()).expect("error while running AI Creator Studio"); }
+pub fn run() { tauri::Builder::default().plugin(tauri_plugin_shell::init()).invoke_handler(tauri::generate_handler![engine_status, hardware_info, system_check, capabilities, model_catalog, model_schema, startup, start_engine, generate, generation_status, record_generation_assets, asset_catalog, stop_engine]).run(tauri::generate_context!()).expect("error while running AI Creator Studio"); }
