@@ -76,11 +76,10 @@ pub fn generate(model_type: String, settings: Value) -> Result<String, String> {
 pub fn generation_status(job_id: String) -> Result<jobs::JobSnapshot, String> { job_manager().get(&job_id) }
 
 #[tauri::command]
-pub fn record_generation_assets(job_id: String) -> Result<Vec<assets::AssetRecord>, String> {
+pub fn record_generation_assets(job_id: String, model_type: String) -> Result<Vec<assets::AssetRecord>, String> {
     let job = job_manager().get(&job_id)?;
     if !matches!(job.state, jobs::JobState::Completed) { return Err("Generation job is not completed".into()); }
     let result = job.result.ok_or_else(|| "Generation job has no result".to_string())?;
-    let model_type = result.get("model_type").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
     let created_at = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| format!("Clock error: {e}"))?.as_secs();
     assets::from_generation(runtime_dir(), &result, model_type, created_at)
 }
