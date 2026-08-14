@@ -11,7 +11,7 @@ const samples = [
 type Model = { id: string; label: string; kind: string; available: boolean };
 type Catalog = { models: Model[]; source: string; error?: string };
 type GenerationResult = { success: boolean; generated_files: string[]; errors: { message: string; stage?: string }[]; artifacts: { path?: string; media_type: string; fps?: number }[] };
-
+type JobSnapshot = { id: string; state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'; message: string; result?: GenerationResult | null };
 type GeneratedAsset = { path: string; mediaType: string; url?: string };
 
 export function DemoStudio() {
@@ -50,22 +50,30 @@ export function DemoStudio() {
     if (generating || !prompt.trim()) return;
     setGenerating(true);
     setGeneratedAsset(null);
-    setMessage('Starting generation…');
+    setMessage('Queued…');
     try {
-      const result = await invoke<GenerationResult>('generate', { modelType: selectedModel.id, settings: { ...settings, prompt: prompt.trim() } });
-      if (!result.success) {
-        setMessage(result.errors?.[0]?.message || 'Generation failed');
-        return;
+      const jobId = await invoke<string>('generate', { modelType: selectedModel.id, settings: { ...settings, prompt: prompt.trim() } });
+      let finished = false;
+      while (!finished) {
+        const job = await invoke<JobSnapshot>('generation_status', { jobId });
+        setMessage(job.message);
+        if (job.state === 'completed') {
+          const result = job.result;
+          if (!result?.success) { setMessage(result?.errors?.[0]?.message || 'Generation failed'); break; }
+          const file = result.generated_files?.[0] || result.artifacts?.find(a => a.path)?.path;
+          if (!file) { setMessage('Generation finished, but no output file was returned.'); break; }
+          const mediaType = result.artifacts?.find(a => a.path === file)?.media_type || selectedModel.kind;
+          setGeneratedAsset({ path: file, mediaType, url: convertFileSrc(file) });
+          setMessage(`Generation completed · added to Assets and Timeline`);
+          setActive('generated');
+          finished = true;
+        } else if (job.state === 'failed' || job.state === 'cancelled') {
+          setMessage(job.message || 'Generation failed');
+          finished = true;
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-      const file = result.generated_files?.[0] || result.artifacts?.find(a => a.path)?.path;
-      if (!file) {
-        setMessage('Generation finished, but no output file was returned.');
-        return;
-      }
-      const mediaType = result.artifacts?.find(a => a.path === file)?.media_type || selectedModel.kind;
-      setGeneratedAsset({ path: file, mediaType, url: convertFileSrc(file) });
-      setMessage(`Generated ${mediaType.toLowerCase()} · added to Assets and Timeline`);
-      setActive('generated');
     } catch (error) {
       setMessage(String(error));
     } finally {
