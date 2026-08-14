@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { DemoModelsPanel } from './DemoModelsPanel';
 import { SchemaForm } from './SchemaForm';
 
@@ -12,6 +12,8 @@ type Model = { id: string; label: string; kind: string; available: boolean };
 type Catalog = { models: Model[]; source: string; error?: string };
 type GenerationResult = { success: boolean; generated_files: string[]; errors: { message: string; stage?: string }[]; artifacts: { path?: string; media_type: string; fps?: number }[] };
 
+type GeneratedAsset = { path: string; mediaType: string; url?: string };
+
 export function DemoStudio() {
   const [prompt, setPrompt] = useState('Макс открывает загадочную светящуюся коробочку в лесу. Из неё появляется разноцветный магический туман.');
   const [active, setActive] = useState('forest');
@@ -23,6 +25,7 @@ export function DemoStudio() {
   const [selectedModel, setSelectedModel] = useState<Model>({ id: 'wan-video', label: 'Wan Video', kind: 'Video', available: true });
   const [schema, setSchema] = useState<Record<string, unknown> | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
+  const [generatedAsset, setGeneratedAsset] = useState<GeneratedAsset | null>(null);
 
   useEffect(() => {
     invoke<Catalog>('model_catalog').then(catalog => {
@@ -46,17 +49,28 @@ export function DemoStudio() {
   async function generate() {
     if (generating || !prompt.trim()) return;
     setGenerating(true);
-    setMessage('Starting WanGP generation…');
+    setGeneratedAsset(null);
+    setMessage('Starting generation…');
     try {
       const result = await invoke<GenerationResult>('generate', { modelType: selectedModel.id, settings: { ...settings, prompt: prompt.trim() } });
-      if (!result.success) setMessage(result.errors?.[0]?.message || 'Generation failed');
-      else {
-        const file = result.generated_files?.[0] || result.artifacts?.[0]?.path || 'generated asset';
-        setMessage(`Generated: ${file}`);
-        setActive('forest');
+      if (!result.success) {
+        setMessage(result.errors?.[0]?.message || 'Generation failed');
+        return;
       }
-    } catch (error) { setMessage(String(error)); }
-    finally { setGenerating(false); }
+      const file = result.generated_files?.[0] || result.artifacts?.find(a => a.path)?.path;
+      if (!file) {
+        setMessage('Generation finished, but no output file was returned.');
+        return;
+      }
+      const mediaType = result.artifacts?.find(a => a.path === file)?.media_type || selectedModel.kind;
+      setGeneratedAsset({ path: file, mediaType, url: convertFileSrc(file) });
+      setMessage(`Generated ${mediaType.toLowerCase()} · added to Assets and Timeline`);
+      setActive('generated');
+    } catch (error) {
+      setMessage(String(error));
+    } finally {
+      setGenerating(false);
+    }
   }
 
   return <div className="demo-studio">
@@ -76,8 +90,11 @@ export function DemoStudio() {
         <div className="mode-tabs">{(['Generate','Deepy'] as const).map(x => <button onClick={() => setMode(x)} className={mode === x ? 'on' : ''} key={x}>{x === 'Deepy' && <span>✦</span>}{x}</button>)}</div>
         <section className="prompt-card"><div className="prompt-label"><span>{mode === 'Deepy' ? 'DEEPY · CREATIVE ASSISTANT' : 'PROMPT'}</span><span className="counter">{prompt.length}/2000</span></div><textarea value={prompt} onChange={e => setPrompt(e.target.value)} /><div className="prompt-footer"><button className="mini">＋ Reference</button><button className="mini" onClick={() => setShowModels(true)}>◇ {selectedModel.label}</button><button className="mini" onClick={() => setShowAdvanced(v => !v)}>⚙ Advanced {showAdvanced ? '⌃' : '⌄'}</button><button className="generate-btn" onClick={generate} disabled={generating}>{generating ? 'Generating…' : mode === 'Deepy' ? '✦ Ask Deepy' : 'Generate'} <span>→</span></button></div>{showAdvanced && schema && <div className="schema-panel"><SchemaForm schema={schema} values={settings} onChange={setSettings} /></div>}{message && <div className="generation-message">{message}</div>}</section>
         <div className="section-head"><span>RECENT CREATIONS</span><button>View all →</button></div>
-        <section className="creation-grid">{samples.map(s => <button key={s.id} onClick={() => setActive(s.id)} className={`creation ${active === s.id ? 'active' : ''}`}><div className={`thumb ${s.id}`}><span>{s.id === 'forest' ? '✦' : s.id === 'lumi' ? '◉' : '♫'}</span><small>{s.kind}</small></div><div className="creation-info"><b>{s.title}</b><small>{s.meta}</small></div></button>)}</section>
-        <section className="timeline-demo"><div className="section-head"><span>TIMELINE</span><span className="muted">00:00 — 00:15</span></div><div className="track"><div className="playhead" /><div className="clip clip-a">Scene 01</div><div className="clip clip-b">Scene 02</div><div className="clip clip-c">Voice</div></div></section>
+        <section className="creation-grid">
+          {generatedAsset && <button onClick={() => setActive('generated')} className={`creation generated ${active === 'generated' ? 'active' : ''}`}><div className="thumb generated-thumb">{generatedAsset.mediaType.toLowerCase().includes('video') ? <video src={generatedAsset.url} controls muted /> : generatedAsset.mediaType.toLowerCase().includes('image') ? <img src={generatedAsset.url} alt="Generated" /> : <span>♫</span>}</div><div className="creation-info"><b>New generation</b><small>{generatedAsset.mediaType} · {generatedAsset.path.split(/[\\/]/).pop()}</small></div></button>}
+          {samples.map(s => <button key={s.id} onClick={() => setActive(s.id)} className={`creation ${active === s.id ? 'active' : ''}`}><div className={`thumb ${s.id}`}><span>{s.id === 'forest' ? '✦' : s.id === 'lumi' ? '◉' : '♫'}</span><small>{s.kind}</small></div><div className="creation-info"><b>{s.title}</b><small>{s.meta}</small></div></button>)}
+        </section>
+        <section className="timeline-demo"><div className="section-head"><span>TIMELINE</span><span className="muted">00:00 — 00:15</span></div><div className="track"><div className="playhead" />{generatedAsset && <div className="clip clip-generated">New generation</div>}<div className="clip clip-a">Scene 01</div><div className="clip clip-b">Scene 02</div><div className="clip clip-c">Voice</div></div></section>
       </main>
       {showModels && <DemoModelsPanel selected={selectedModel.id} onSelect={model => { setSelectedModel(model); setShowModels(false); }} />}
     </div>
