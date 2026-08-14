@@ -1,5 +1,4 @@
 use serde::Serialize;
-use std::{thread, time::Duration};
 
 #[derive(Debug, Serialize)]
 pub struct StartupStep { pub id: String, pub status: String, pub detail: String }
@@ -10,15 +9,9 @@ fn step(id: &str, status: &str, detail: impl Into<String>) -> StartupStep { Star
 pub fn run() -> StartupReport {
     let mut steps = Vec::new();
 
-    // The bridge is a process started by Studio, so it must not be a prerequisite
-    // for the system check itself. Start it first, then validate the full system.
-    if std::net::TcpStream::connect("127.0.0.1:18765").is_err() {
-        match crate::start_engine() {
-            Ok(detail) => steps.push(step("engine", "starting", detail)),
-            Err(detail) => steps.push(step("engine", "failed", detail)),
-        }
-    } else {
-        steps.push(step("engine", "ready", "WanGP Studio bridge already running"));
+    match crate::start_engine() {
+        Ok(detail) => steps.push(step("engine", "ready", detail)),
+        Err(detail) => steps.push(step("engine", "failed", detail)),
     }
 
     let check = crate::system_check::run();
@@ -29,15 +22,8 @@ pub fn run() -> StartupReport {
         }
         return StartupReport { ready: false, steps };
     }
-    steps.push(step("system", "ready", "Required runtime components passed"));
 
-    for _ in 0..60 {
-        if std::net::TcpStream::connect("127.0.0.1:18765").is_ok() {
-            steps.push(step("bridge", "ready", "WanGP API bridge is reachable"));
-            return StartupReport { ready: true, steps };
-        }
-        thread::sleep(Duration::from_millis(500));
-    }
-    steps.push(step("bridge", "timeout", "WanGP API bridge did not become reachable within 30 seconds"));
-    StartupReport { ready: false, steps }
+    steps.push(step("system", "ready", "Required runtime components passed"));
+    let engine_ok = steps.iter().any(|item| item.id == "engine" && item.status == "ready");
+    StartupReport { ready: engine_ok && required_ok, steps }
 }
