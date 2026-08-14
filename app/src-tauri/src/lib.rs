@@ -1,12 +1,14 @@
 mod capabilities;
 mod hardware;
+mod jobs;
 mod model_catalog;
 mod startup;
 mod system_check;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{env, fs, path::PathBuf, process::Command, time::{SystemTime, UNIX_EPOCH}};
+use std::{env, fs, path::PathBuf};
+use std::sync::OnceLock;
 
 #[derive(Serialize)]
 pub struct EngineStatus { pub running: bool, pub runtime_dir: String, pub engine_dir: String }
@@ -14,14 +16,17 @@ pub struct EngineStatus { pub running: bool, pub runtime_dir: String, pub engine
 #[derive(Deserialize)]
 struct AdapterEnvelope { error: Option<String> }
 
+static JOBS: OnceLock<jobs::JobManager> = OnceLock::new();
+fn job_manager() -> &'static jobs::JobManager { JOBS.get_or_init(jobs::JobManager::new) }
 fn engine_dir() -> PathBuf { env::var("WAN2GP_ROOT").or_else(|_| env::var("WAN_GP_ROOT")).map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("Wan2GP")) }
 fn runtime_dir() -> PathBuf { env::var("WAN2GP_RUNTIME").map(PathBuf::from).unwrap_or_else(|_| engine_dir().join("runtime")) }
 fn bridge_script() -> PathBuf {
     if let Ok(v) = env::var("AI_CREATOR_WANGP_ADAPTER") { return PathBuf::from(v); }
+    if let Ok(v) = env::var("AI_CREATOR_WAN2GP_ADAPTER") { return PathBuf::from(v); }
     if let Ok(v) = env::var("AI_CREATOR_STUDIO_ROOT") { return PathBuf::from(v).join("engine/wan-gp-adapter/wan_gp_api.py"); }
     PathBuf::from("engine/wan-gp-adapter/wan_gp_api.py")
 }
-fn python_command() -> Command { if cfg!(target_os = "windows") { Command::new("python") } else { Command::new("python3") } }
+fn python_command() -> std::process::Command { if cfg!(target_os = "windows") { std::process::Command::new("python") } else { std::process::Command::new("python3") } }
 fn run_adapter(args: &[String]) -> Result<String, String> {
     let script = bridge_script();
     if !script.exists() { return Err(format!("WanGP adapter not found: {}", script.display())); }
@@ -55,21 +60,20 @@ pub fn model_schema(model_type: String) -> Result<Value, String> {
 pub fn start_engine() -> Result<String, String> { let _ = run_adapter(&["models".into()])?; Ok("WanGP adapter is ready".into()) }
 
 #[tauri::command]
-pub fn generate(model_type: String, settings: Value) -> Result<Value, String> {
+pub fn generate(model_type: String, settings: Value) -> Result<String, String> {
     if model_type.trim().is_empty() { return Err("model_type is required".into()); }
+    if !settings.is_object() { return Err("settings must be a JSON object".into()); }
     let runtime = runtime_dir(); fs::create_dir_all(&runtime).map_err(|e| format!("Failed to create runtime directory: {e}"))?;
-    let output_dir = runtime.join("generations"); fs::create_dir_all(&output_dir).map_err(|e| format!("Failed to create output directory: {e}"))?;
-    let stamp = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| format!("Clock error: {e}"))?.as_millis();
-    let settings_path = runtime.join(format!("generation-{stamp}.json"));
-    let mut request = settings; if !request.is_object() { return Err("settings must be a JSON object".into()); }
-    request["model_type"] = Value::String(model_type.clone());
-    fs::write(&settings_path, serde_json::to_vec_pretty(&request).map_err(|e| format!("Invalid settings: {e}"))?).map_err(|e| format!("Failed to write generation settings: {e}"))?;
-    let args = vec!["--output-dir".into(), output_dir.to_string_lossy().into_owned(), "--model".into(), model_type, "generate".into(), "--settings".into(), settings_path.to_string_lossy().into_owned()];
-    let result = run_adapter(&args); let _ = fs::remove_file(settings_path); let payload = result?;
-    serde_json::from_str(&payload).map_err(|e| format!("Invalid adapter response: {e}"))
+    let output_dir = runtime.join("generations");
+    let mut request = settings;
+    request["model_type"] = Value::String(model_type);
+    job_manager().submit(bridge_script(), engine_dir(), output_dir, request["model_type"].as_str().unwrap_or_default().to_string(), request)
 }
+
+#[tauri::command]
+pub fn generation_status(job_id: String) -> Result<jobs::JobSnapshot, String> { job_manager().get(&job_id) }
 #[tauri::command] pub fn stop_engine() -> Result<String, String> { Ok("WanGP adapter is invoked per operation; no persistent process to stop".into()) }
 #[tauri::command] fn startup() -> startup::StartupReport { startup::run() }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() { tauri::Builder::default().plugin(tauri_plugin_shell::init()).invoke_handler(tauri::generate_handler![engine_status, hardware_info, system_check, capabilities, model_catalog, model_schema, startup, start_engine, generate, stop_engine]).run(tauri::generate_context!()).expect("error while running AI Creator Studio"); }
+pub fn run() { tauri::Builder::default().plugin(tauri_plugin_shell::init()).invoke_handler(tauri::generate_handler![engine_status, hardware_info, system_check, capabilities, model_catalog, model_schema, startup, start_engine, generate, generation_status, stop_engine]).run(tauri::generate_context!()).expect("error while running AI Creator Studio"); }
