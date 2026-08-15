@@ -3,6 +3,7 @@ mod capabilities;
 mod hardware;
 mod jobs;
 mod model_catalog;
+mod project;
 mod startup;
 mod system_check;
 
@@ -87,8 +88,14 @@ pub fn record_generation_assets(job_id: String, model_type: String) -> Result<Ve
 #[tauri::command]
 pub fn asset_catalog() -> Result<Vec<assets::AssetRecord>, String> { assets::list(runtime_dir()) }
 
+#[tauri::command]
+pub fn project_load() -> Result<project::ProjectState, String> { project::load(runtime_dir()) }
+
+#[tauri::command]
+pub fn project_save(state: project::ProjectState) -> Result<project::ProjectState, String> { project::save(runtime_dir(), &state) }
+
 #[tauri::command] pub fn stop_engine() -> Result<String, String> { Ok("WanGP adapter is invoked per operation; no persistent process to stop".into()) }
 #[tauri::command] fn startup() -> startup::StartupReport { startup::run() }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() { tauri::Builder::default().plugin(tauri_plugin_shell::init()).invoke_handler(tauri::generate_handler![engine_status, hardware_info, system_check, capabilities, model_catalog, model_schema, startup, start_engine, generate, generation_status, record_generation_assets, asset_catalog, stop_engine]).run(tauri::generate_context!()).expect("error while running AI Creator Studio"); }
+pub fn run() { tauri::Builder::default().plugin(tauri_plugin_shell::init()).invoke_handler(tauri::generate_handler![engine_status, hardware_info, system_check, capabilities, model_catalog, model_schema, startup, start_engine, generate, generation_status, record_generation_assets, asset_catalog, project_load, project_save, stop_engine]).run(tauri::generate_context!()).expect("error while running AI Creator Studio"); }
