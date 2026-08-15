@@ -32,7 +32,13 @@ pub fn load(runtime_dir: PathBuf) -> Result<ProjectState, String> {
 
 pub fn save(runtime_dir: PathBuf, state: &ProjectState) -> Result<ProjectState, String> {
     fs::create_dir_all(&runtime_dir).map_err(|e| format!("Failed to create runtime directory: {e}"))?;
-    fs::write(project_path(&runtime_dir), serde_json::to_vec_pretty(state).map_err(|e| format!("Failed to encode project: {e}"))?)
-        .map_err(|e| format!("Failed to save project: {e}"))?;
+    let target = project_path(&runtime_dir);
+    let temp = runtime_dir.join("project.json.tmp");
+    let bytes = serde_json::to_vec_pretty(state).map_err(|e| format!("Failed to encode project: {e}"))?;
+    fs::write(&temp, bytes).map_err(|e| format!("Failed to write project temp file: {e}"))?;
+    fs::rename(&temp, &target).map_err(|e| {
+        let _ = fs::remove_file(&temp);
+        format!("Failed to commit project file: {e}")
+    })?;
     Ok(state.clone())
 }
