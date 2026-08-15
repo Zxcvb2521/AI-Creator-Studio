@@ -13,6 +13,7 @@ type Catalog = { models: Model[]; source: string; error?: string };
 type GenerationResult = { success: boolean; generated_files: string[]; errors: { message: string; stage?: string }[]; artifacts: { path?: string; media_type: string; fps?: number }[] };
 type JobSnapshot = { id: string; state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'; message: string; result?: GenerationResult | null };
 type GeneratedAsset = { path: string; mediaType: string; url?: string };
+type AssetRecord = { id: string; path: string; media_type: string; model_type: string; created_at: number };
 
 export function DemoStudio() {
   const [prompt, setPrompt] = useState('Макс открывает загадочную светящуюся коробочку в лесу. Из неё появляется разноцветный магический туман.');
@@ -26,12 +27,14 @@ export function DemoStudio() {
   const [schema, setSchema] = useState<Record<string, unknown> | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [generatedAsset, setGeneratedAsset] = useState<GeneratedAsset | null>(null);
+  const [assets, setAssets] = useState<AssetRecord[]>([]);
 
   useEffect(() => {
     invoke<Catalog>('model_catalog').then(catalog => {
       const firstVideo = catalog.models?.find(model => model.kind.toLowerCase().includes('video') && model.available) || catalog.models?.find(model => model.available);
       if (firstVideo) setSelectedModel(firstVideo);
     }).catch(() => undefined);
+    invoke<AssetRecord[]>('asset_catalog').then(setAssets).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -64,7 +67,13 @@ export function DemoStudio() {
           if (!file) { setMessage('Generation finished, but no output file was returned.'); break; }
           const mediaType = result.artifacts?.find(a => a.path === file)?.media_type || selectedModel.kind;
           setGeneratedAsset({ path: file, mediaType, url: convertFileSrc(file) });
-          setMessage(`Generation completed · added to Assets and Timeline`);
+          try {
+            const recorded = await invoke<AssetRecord[]>('record_generation_assets', { jobId, modelType: selectedModel.id });
+            setAssets(current => [...current.filter(item => !recorded.some(next => next.id === item.id)), ...recorded]);
+          } catch (assetError) {
+            setMessage(`Generation completed · asset catalog warning: ${String(assetError)}`);
+          }
+          setMessage('Generation completed · added to Assets and Timeline');
           setActive('generated');
           finished = true;
         } else if (job.state === 'failed' || job.state === 'cancelled') {
@@ -103,6 +112,7 @@ export function DemoStudio() {
           {samples.map(s => <button key={s.id} onClick={() => setActive(s.id)} className={`creation ${active === s.id ? 'active' : ''}`}><div className={`thumb ${s.id}`}><span>{s.id === 'forest' ? '✦' : s.id === 'lumi' ? '◉' : '♫'}</span><small>{s.kind}</small></div><div className="creation-info"><b>{s.title}</b><small>{s.meta}</small></div></button>)}
         </section>
         <section className="timeline-demo"><div className="section-head"><span>TIMELINE</span><span className="muted">00:00 — 00:15</span></div><div className="track"><div className="playhead" />{generatedAsset && <div className="clip clip-generated">New generation</div>}<div className="clip clip-a">Scene 01</div><div className="clip clip-b">Scene 02</div><div className="clip clip-c">Voice</div></div></section>
+        {assets.length > 0 && <section className="section-head" style={{marginTop: 20}}><span>ASSET LIBRARY · {assets.length}</span><span className="muted">Persisted</span></section>}
       </main>
       {showModels && <DemoModelsPanel selected={selectedModel.id} onSelect={model => { setSelectedModel(model); setShowModels(false); }} />}
     </div>
