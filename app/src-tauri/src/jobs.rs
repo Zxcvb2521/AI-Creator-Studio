@@ -20,7 +20,7 @@ pub struct JobManager { jobs: Arc<Mutex<HashMap<String, JobSnapshot>>> }
 impl JobManager {
     pub fn new() -> Self { Self { jobs: Arc::new(Mutex::new(HashMap::new())) } }
 
-    pub fn submit(&self, script: PathBuf, root: PathBuf, output_dir: PathBuf, model_type: String, settings: Value) -> Result<String, String> {
+    pub fn submit(&self, python: PathBuf, script: PathBuf, root: PathBuf, output_dir: PathBuf, model_type: String, settings: Value) -> Result<String, String> {
         fs::create_dir_all(&output_dir).map_err(|e| format!("Failed to create output directory: {e}"))?;
         let stamp = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| format!("Clock error: {e}"))?.as_millis();
         let id = format!("generation-{stamp}");
@@ -33,7 +33,7 @@ impl JobManager {
         let job_id = id.clone();
         thread::spawn(move || {
             if let Some(job) = jobs.lock().unwrap().get_mut(&job_id) { job.state = JobState::Running; job.message = "Generating with WanGP…".into(); }
-            let mut cmd = if cfg!(target_os = "windows") { Command::new("python") } else { Command::new("python3") };
+            let mut cmd = Command::new(&python);
             cmd.arg(script).arg("--root").arg(root).arg("--output-dir").arg(&output_dir).arg("generate").arg("--settings").arg(&settings_path);
             let result = cmd.output();
             let _ = fs::remove_file(&settings_path);
@@ -52,7 +52,7 @@ impl JobManager {
                         job.state = JobState::Failed;
                         job.message = if stderr.is_empty() { "WanGP generation failed".into() } else { stderr };
                     }
-                    Err(e) => { job.state = JobState::Failed; job.message = format!("Failed to launch WanGP adapter: {e}"); }
+                    Err(e) => { job.state = JobState::Failed; job.message = format!("Failed to launch WanGP adapter with {}: {e}", python.display()); }
                 }
             }
         });
