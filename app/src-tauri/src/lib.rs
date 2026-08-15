@@ -9,7 +9,7 @@ mod system_check;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{env, fs, path::PathBuf};
+use std::{env, fs, path::{Path, PathBuf}};
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -29,13 +29,39 @@ fn bridge_script() -> PathBuf {
     if let Ok(v) = env::var("AI_CREATOR_STUDIO_ROOT") { return PathBuf::from(v).join("engine/wan-gp-adapter/wan_gp_api.py"); }
     PathBuf::from("engine/wan-gp-adapter/wan_gp_api.py")
 }
-fn python_command() -> std::process::Command { if cfg!(target_os = "windows") { std::process::Command::new("python") } else { std::process::Command::new("python3") } }
+fn python_command() -> std::process::Command { std::process::Command::new(resolve_python().to_string_lossy().as_ref()) }
+fn resolve_python() -> PathBuf {
+    for key in ["WAN2GP_PYTHON", "WAN_GP_PYTHON", "AI_CREATOR_PYTHON"] {
+        if let Ok(value) = env::var(key) {
+            let path = PathBuf::from(value);
+            if path.exists() { return path; }
+        }
+    }
+    let root = engine_dir();
+    if cfg!(target_os = "windows") {
+        for relative in ["venv/Scripts/python.exe", ".venv/Scripts/python.exe", "python/python.exe"] {
+            let path = root.join(relative);
+            if path.exists() { return path; }
+        }
+        if let Ok(value) = env::var("LOCALAPPDATA") {
+            let path = PathBuf::from(value).join("Programs/Python/Python311/python.exe");
+            if path.exists() { return path; }
+        }
+        PathBuf::from("python")
+    } else {
+        for relative in ["venv/bin/python", ".venv/bin/python", "python/bin/python"] {
+            let path = root.join(relative);
+            if path.exists() { return path; }
+        }
+        PathBuf::from("python3")
+    }
+}
 fn run_adapter(args: &[String]) -> Result<String, String> {
     let script = bridge_script();
     if !script.exists() { return Err(format!("WanGP adapter not found: {}", script.display())); }
     let mut command = python_command(); command.arg(&script).arg("--root").arg(engine_dir());
     for arg in args { command.arg(arg); }
-    let output = command.output().map_err(|e| format!("Failed to launch WanGP adapter: {e}"))?;
+    let output = command.output().map_err(|e| format!("Failed to launch WanGP adapter with {}: {e}", resolve_python().display()))?;
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if !output.status.success() {
@@ -60,7 +86,7 @@ pub fn model_schema(model_type: String) -> Result<Value, String> {
 }
 
 #[tauri::command]
-pub fn start_engine() -> Result<String, String> { let _ = run_adapter(&["models".into()])?; Ok("WanGP adapter is ready".into()) }
+pub fn start_engine() -> Result<String, String> { let _ = run_adapter(&["models".into()])?; Ok(format!("WanGP adapter is ready · Python: {}", resolve_python().display())) }
 
 #[tauri::command]
 pub fn generate(model_type: String, settings: Value) -> Result<String, String> {
@@ -70,7 +96,7 @@ pub fn generate(model_type: String, settings: Value) -> Result<String, String> {
     let output_dir = runtime.join("generations");
     let mut request = settings;
     request["model_type"] = Value::String(model_type);
-    job_manager().submit(bridge_script(), engine_dir(), output_dir, request["model_type"].as_str().unwrap_or_default().to_string(), request)
+    job_manager().submit(resolve_python(), bridge_script(), engine_dir(), output_dir, request["model_type"].as_str().unwrap_or_default().to_string(), request)
 }
 
 #[tauri::command]
@@ -87,13 +113,10 @@ pub fn record_generation_assets(job_id: String, model_type: String) -> Result<Ve
 
 #[tauri::command]
 pub fn asset_catalog() -> Result<Vec<assets::AssetRecord>, String> { assets::list(runtime_dir()) }
-
 #[tauri::command]
 pub fn project_load() -> Result<project::ProjectState, String> { project::load(runtime_dir()) }
-
 #[tauri::command]
 pub fn project_save(state: project::ProjectState) -> Result<project::ProjectState, String> { project::save(runtime_dir(), &state) }
-
 #[tauri::command] pub fn stop_engine() -> Result<String, String> { Ok("WanGP adapter is invoked per operation; no persistent process to stop".into()) }
 #[tauri::command] fn startup() -> startup::StartupReport { startup::run() }
 
