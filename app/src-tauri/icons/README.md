@@ -1,0 +1,1 @@
+Windows bundle icon is generated locally during development until the release icon set is committed.
