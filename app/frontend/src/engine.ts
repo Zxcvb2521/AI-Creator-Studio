@@ -1,8 +1,33 @@
-import type { EngineCapabilities, JobSnapshot, GenerationRequest } from '../../engine/wan-gp-adapter/src/types';
+import type { } from '@tauri-apps/api/core';
 
-export async function engineStatus(): Promise<unknown> {
+export type EngineCapability = {
+  id: string;
+  label?: string;
+  description?: string;
+  available?: boolean;
+};
+
+export type EngineCapabilities = {
+  engine?: string;
+  ready?: boolean;
+  capabilities: EngineCapability[];
+};
+
+export type JobSnapshot = {
+  id: string;
+  state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+  message: string;
+  result?: unknown;
+};
+
+export type GenerationRequest = {
+  model_type: string;
+  settings: Record<string, unknown>;
+};
+
+export async function engineStatus(): Promise<EngineCapabilities> {
   const { invoke } = await import('@tauri-apps/api/core');
-  return invoke('engine_status');
+  return invoke<EngineCapabilities>('engine_status');
 }
 
 export async function engineStart(): Promise<string> {
@@ -14,5 +39,3 @@ export async function engineStop(): Promise<string> {
   const { invoke } = await import('@tauri-apps/api/core');
   return invoke<string>('stop_engine');
 }
-
-export type { EngineCapabilities, JobSnapshot, GenerationRequest };
