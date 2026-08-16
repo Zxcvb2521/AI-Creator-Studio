@@ -1,5 +1,3 @@
-import type { } from '@tauri-apps/api/core';
-
 export type EngineCapability = {
   id: string;
   label?: string;
