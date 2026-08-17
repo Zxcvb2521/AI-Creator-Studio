@@ -9,7 +9,7 @@ fn step(id: &str, status: &str, detail: impl Into<String>) -> StartupStep { Star
 pub fn run() -> StartupReport {
     let mut steps = Vec::new();
 
-    match crate::start_engine() {
+    match crate::commands::start_engine() {
         Ok(detail) => steps.push(step("engine", "ready", detail)),
         Err(detail) => steps.push(step("engine", "failed", detail)),
     }
