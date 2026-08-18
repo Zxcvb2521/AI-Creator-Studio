@@ -8,12 +8,11 @@ mod project;
 mod startup;
 mod system_check;
 
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::{env, fs, path::PathBuf};
+use serde::Deserialize;
+use std::{env, path::PathBuf};
 use std::sync::OnceLock;
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 pub struct EngineStatus { pub running: bool, pub runtime_dir: String, pub engine_dir: String }
 #[derive(Deserialize)] struct AdapterEnvelope { error: Option<String> }
 static JOBS: OnceLock<jobs::JobManager> = OnceLock::new();
