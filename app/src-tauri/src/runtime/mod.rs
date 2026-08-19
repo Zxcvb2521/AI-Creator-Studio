@@ -16,15 +16,23 @@ pub struct RuntimeStatus {
     pub gpu: Option<String>,
 }
 
+/// Development mode may override the runtime root. Production keeps all engine/runtime
+/// files beside the Studio executable so the whole application can be moved as one unit.
 pub fn root() -> PathBuf {
-    if let Ok(path) = std::env::var("AI_CREATOR_STUDIO_ROOT") { return PathBuf::from(path).join("runtime"); }
-    if let Ok(local) = std::env::var("LOCALAPPDATA") { return PathBuf::from(local).join("AI Creator Studio").join("runtime"); }
+    if let Ok(path) = std::env::var("AI_CREATOR_STUDIO_ROOT") {
+        return PathBuf::from(path).join("runtime");
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            return parent.join("runtime");
+        }
+    }
     PathBuf::from("runtime")
 }
 
 pub fn status() -> RuntimeStatus {
     let runtime = root();
-    let engine = runtime.join("Wan2GP");
+    let engine = runtime.join("wan2gp");
     let python = detector::find_python(&runtime);
     let gpu = detector::nvidia_gpu();
     let ready = manifest::is_ready(&runtime);
