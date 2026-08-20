@@ -1,17 +1,35 @@
 param(
-  [string]$InstallRoot = "F:\XTTS\Wan2GP"
+  [string]$InstallRoot = ""
 )
 $ErrorActionPreference = "Stop"
 $Repo = "https://github.com/deepbeepmeep/Wan2GP.git"
-Write-Host "AI Creator Studio - Wan2GP installer" -ForegroundColor Cyan
+
+Write-Host "AI Creator Studio - Wan2GP developer installer" -ForegroundColor Cyan
+
+# Keep development installations inside the Studio tree by default.
+if ([string]::IsNullOrWhiteSpace($InstallRoot)) {
+  $StudioRoot = Split-Path -Parent $PSScriptRoot
+  $InstallRoot = Join-Path $StudioRoot "runtime\wan2gp"
+}
+
 Write-Host "Install root: $InstallRoot"
 
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw "Git is required. Install Git for Windows first." }
-if (-not (Get-Command conda -ErrorAction SilentlyContinue)) { throw "Conda is required for the managed Wan2GP environment. Install Miniconda/Anaconda first." }
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw "Git is required only for this developer installer. The packaged Studio installer will not require Git." }
+if (-not (Get-Command conda -ErrorAction SilentlyContinue)) { throw "Conda is required only for this developer installer. The packaged Studio installer will use its private runtime." }
 
 $parent = Split-Path -Parent $InstallRoot
 New-Item -ItemType Directory -Force -Path $parent | Out-Null
-if (-not (Test-Path $InstallRoot)) { git clone $Repo $InstallRoot }
+
+# Migrate the old adjacent checkout when it exists, avoiding a second download.
+$oldRoot = Join-Path (Split-Path -Parent $parent) "..\Wan2GP"
+$oldRoot = [System.IO.Path]::GetFullPath($oldRoot)
+if (-not (Test-Path $InstallRoot) -and (Test-Path (Join-Path $oldRoot "wgp.py"))) {
+  Write-Host "Found existing Wan2GP checkout: $oldRoot" -ForegroundColor Yellow
+  Write-Host "Migrating it into the Studio runtime..."
+  Move-Item -LiteralPath $oldRoot -Destination $InstallRoot
+}
+
+if (-not (Test-Path $InstallRoot)) { git clone --depth 1 $Repo $InstallRoot }
 elseif (-not (Test-Path (Join-Path $InstallRoot "wgp.py"))) { throw "$InstallRoot exists but is not a Wan2GP checkout." }
 
 $gpu = ""
