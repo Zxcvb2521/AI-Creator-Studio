@@ -13,6 +13,7 @@ if ([string]::IsNullOrWhiteSpace($InstallRoot)) {
 }
 $InstallRoot = [System.IO.Path]::GetFullPath($InstallRoot)
 $RuntimeRoot = Split-Path -Parent $InstallRoot
+$StudioRoot = Split-Path -Parent $RuntimeRoot
 $PythonEnv = Join-Path $RuntimeRoot "python"
 
 Write-Host "Wan2GP root : $InstallRoot"
@@ -24,7 +25,7 @@ if (-not (Get-Command conda -ErrorAction SilentlyContinue)) { throw "Conda is re
 New-Item -ItemType Directory -Force -Path $RuntimeRoot | Out-Null
 
 # Migrate the old adjacent checkout when it exists, avoiding a second download.
-$oldRoot = Join-Path (Split-Path -Parent $RuntimeRoot) "Wan2GP"
+$oldRoot = Join-Path (Split-Path -Parent $StudioRoot) "Wan2GP"
 $oldRoot = [System.IO.Path]::GetFullPath($oldRoot)
 if (-not (Test-Path $InstallRoot) -and (Test-Path (Join-Path $oldRoot "wgp.py"))) {
   Write-Host "Found existing Wan2GP checkout: $oldRoot" -ForegroundColor Yellow
