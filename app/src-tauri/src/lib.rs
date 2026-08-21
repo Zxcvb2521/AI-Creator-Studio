@@ -18,12 +18,15 @@ pub struct EngineStatus { pub running: bool, pub runtime_dir: String, pub engine
 #[derive(Deserialize)] struct AdapterEnvelope { error: Option<String> }
 static JOBS: OnceLock<jobs::JobManager> = OnceLock::new();
 fn job_manager() -> &'static jobs::JobManager { JOBS.get_or_init(jobs::JobManager::new) }
-fn engine_dir() -> PathBuf { env::var("WAN2GP_ROOT").or_else(|_| env::var("WAN_GP_ROOT")).map(PathBuf::from).unwrap_or_else(|_| runtime::root().join("Wan2GP")) }
+fn engine_dir() -> PathBuf { env::var("WAN2GP_ROOT").or_else(|_| env::var("WAN_GP_ROOT")).map(PathBuf::from).unwrap_or_else(|_| runtime::root().join("wan2gp")) }
 fn runtime_dir() -> PathBuf { env::var("WAN2GP_RUNTIME").map(PathBuf::from).unwrap_or_else(|_| runtime::root()) }
 fn bridge_script() -> PathBuf {
     if let Ok(v) = env::var("AI_CREATOR_WANGP_ADAPTER") { return PathBuf::from(v); }
     if let Ok(v) = env::var("AI_CREATOR_WAN2GP_ADAPTER") { return PathBuf::from(v); }
     if let Ok(v) = env::var("AI_CREATOR_STUDIO_ROOT") { return PathBuf::from(v).join("engine/wan-gp-adapter/wan_gp_api.py"); }
+    if let Ok(exe) = env::current_exe() {
+        if let Some(app_dir) = exe.parent().and_then(|p| p.parent()) { let candidate = app_dir.join("engine/wan-gp-adapter/wan_gp_api.py"); if candidate.exists() { return candidate; } }
+    }
     PathBuf::from("engine/wan-gp-adapter/wan_gp_api.py")
 }
 fn python_command() -> std::process::Command { std::process::Command::new(resolve_python().to_string_lossy().as_ref()) }
