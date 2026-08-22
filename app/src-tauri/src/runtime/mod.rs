@@ -16,12 +16,22 @@ pub struct RuntimeStatus {
     pub gpu: Option<String>,
 }
 
-/// Development mode may override the runtime root. Production keeps all engine/runtime
-/// files beside the Studio executable so the whole application can be moved as one unit.
+/// Development uses the Studio source root. Packaged builds keep runtime beside the executable.
 pub fn root() -> PathBuf {
     if let Ok(path) = std::env::var("AI_CREATOR_STUDIO_ROOT") {
         return PathBuf::from(path).join("runtime");
     }
+
+    #[cfg(debug_assertions)]
+    {
+        let manifest_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        if let Some(studio_root) = manifest_root.parent() {
+            if let Some(runtime) = studio_root.parent().map(|p| p.join("runtime")) {
+                return runtime;
+            }
+        }
+    }
+
     if let Ok(exe) = std::env::current_exe() {
         if let Some(parent) = exe.parent() {
             return parent.join("runtime");
