@@ -21,8 +21,14 @@ impl JobManager {
   let jobs=self.jobs.clone(); let processes=self.processes.clone(); let job_id=id.clone();
   thread::spawn(move || {
    if let Some(job)=jobs.lock().unwrap().get_mut(&job_id){job.state=JobState::Running;job.message="Running WanGP…".into();}
-   let mut command=Command::new(&python); command.arg(&script).arg("--root").arg(&root).arg("generate").arg("--model").arg(&model_type).arg("--settings").arg(&settings_path);
-   let child=match command.spawn(){Ok(c)=>c,Err(e)=>{if let Some(job)=jobs.lock().unwrap().get_mut(&job_id){job.state=JobState::Failed;job.message=format!("Failed to launch WanGP adapter with {}: {e}",python.display());}return;}};
+   let mut command=Command::new(&python);
+   command.current_dir(&root)
+       .env("PYTHONNOUSERSITE", "1")
+       .env("PYTHONUTF8", "1")
+       .env("PYTHONUNBUFFERED", "1")
+       .env("WAN2GP_ROOT", &root)
+       .arg(&script).arg("--root").arg(&root).arg("generate").arg("--model").arg(&model_type).arg("--settings").arg(&settings_path);
+   let child=match command.spawn(){Ok(c)=>c,Err(e)=>{if let Some(job)=jobs.lock().unwrap().get_mut(&job_id){job.state=JobState::Failed;job.message=format!("Failed to launch Wan2GP adapter with {}: {e}",python.display());}return;}};
    processes.lock().unwrap().insert(job_id.clone(),child);
    loop {
     let finished={let mut table=processes.lock().unwrap();if let Some(child)=table.get_mut(&job_id){match child.try_wait(){Ok(Some(status))=>Some(status),Ok(None)=>None,Err(_)=>None}}else{None}};
