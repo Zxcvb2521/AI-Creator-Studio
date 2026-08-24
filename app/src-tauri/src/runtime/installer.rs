@@ -74,8 +74,6 @@ fn ensure_engine(root: &Path) -> Result<PathBuf, String> {
     if engine.join("wgp.py").exists() { return Ok(engine); }
     fs::create_dir_all(root).map_err(|e| format!("Failed to create runtime directory: {e}"))?;
 
-    // No Git/Conda/Python installation is required. The launcher downloads a
-    // source archive directly from GitHub and keeps the checkout inside Studio.
     if !cfg!(windows) {
         return Err("The automatic archive bootstrap is currently implemented for Windows builds.".into());
     }
@@ -92,7 +90,7 @@ fn ensure_engine(root: &Path) -> Result<PathBuf, String> {
         "$src=Get-ChildItem -LiteralPath '{}' -Directory | Select-Object -First 1; "
         "if(-not $src){{throw 'Wan2GP archive has no root directory'}}; "
         "New-Item -ItemType Directory -Force -Path '{}' | Out-Null; "
-        "Copy-Item -LiteralPath (Join-Path $src.FullName '*') -Destination '{}' -Recurse -Force; "
+        "Copy-Item -Path (Join-Path $src.FullName '*') -Destination '{}' -Recurse -Force; "
         "Remove-Item -Force '{}' -ErrorAction SilentlyContinue; "
         "Remove-Item -Recurse -Force '{}' -ErrorAction SilentlyContinue",
         WAN2GP_ZIP_URL, zip_s, extract_s, extract_s, zip_s, extract_s, extract_s, engine_s, engine_s, zip_s, extract_s
@@ -106,19 +104,14 @@ pub fn install(root: &Path) -> Result<(), String> {
     fs::create_dir_all(root).map_err(|e| format!("Failed to create runtime directory: {e}"))?;
     let uv = ensure_uv(root)?;
     let engine = ensure_engine(root)?;
-    let env_dir = engine.join("env_uv");
     let cache_dir = root.join("cache");
     let python_dir = root.join("python");
     fs::create_dir_all(&cache_dir).map_err(|e| format!("Failed to create runtime cache: {e}"))?;
     fs::create_dir_all(&python_dir).map_err(|e| format!("Failed to create runtime Python cache: {e}"))?;
 
-    // We deliberately reuse Wan2GP's own setup.py rather than duplicating its
-    // hardware matrix. This is the important part borrowed from the desktop
-    // launcher: GPU detection, Python 3.11, torch/CUDA choice, Triton,
-    // Sage/Flash/Sparge, GGUF/Nunchaku/LightX2V and plugin requirements stay
-    // in sync with upstream. The Studio only supplies the managed uv runtime.
+    // Reuse Wan2GP's own setup.py hardware matrix. The desktop launcher project
+    // proved this is the safest way to stay aligned with upstream GPU wheels.
     let uv_path = uv.to_string_lossy().into_owned();
-    let engine_path = engine.to_string_lossy().into_owned();
     let cache_path = cache_dir.to_string_lossy().into_owned();
     let py_cache = python_dir.to_string_lossy().into_owned();
     let mut path_env = std::env::var("PATH").unwrap_or_default();
@@ -133,7 +126,6 @@ pub fn install(root: &Path) -> Result<(), String> {
         ("PATH", path_env.as_str()),
     ];
 
-    let _ = env_dir; // setup.py owns the exact env path and registry.
     run(
         &uv_path,
         &["run", "--python", "3.11.14", "python", "setup.py", "install", "--env", "uv", "--auto"],
@@ -143,7 +135,6 @@ pub fn install(root: &Path) -> Result<(), String> {
 
     let python = detector::find_python(root)
         .ok_or_else(|| "Wan2GP setup completed but the Studio-managed Python environment was not found".to_string())?;
-    let python_display = python.to_string_lossy().into_owned();
-    manifest::write(root, python_display)?;
+    manifest::write(root, python.to_string_lossy().into_owned())?;
     Ok(())
 }
