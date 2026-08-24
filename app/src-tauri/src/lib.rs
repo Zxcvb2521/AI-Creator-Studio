@@ -56,11 +56,23 @@ fn python_command() -> std::process::Command { std::process::Command::new(resolv
 fn resolve_python() -> PathBuf { if let Some(python) = runtime::detector::find_python(&runtime::root()) { return PathBuf::from(python); } PathBuf::from("python") }
 fn run_adapter(args: &[String]) -> Result<String, String> {
     let script = bridge_script();
+    let root = engine_dir();
     if !script.exists() { return Err(format!("Wan2GP adapter not found: {}", script.display())); }
+    if !root.join("wgp.py").exists() { return Err(format!("Wan2GP root does not exist: {}", root.display())); }
+    let python = resolve_python();
     let mut command = python_command();
-    command.arg(&script).arg("--root").arg(engine_dir());
+    command
+        .current_dir(&root)
+        .env("PYTHONNOUSERSITE", "1")
+        .env("PYTHONUTF8", "1")
+        .env("PYTHONUNBUFFERED", "1")
+        .env("WAN2GP_ROOT", &root)
+        .env("HF_HOME", runtime_dir().join("models").join("huggingface"))
+        .arg(&script)
+        .arg("--root")
+        .arg(&root);
     for arg in args { command.arg(arg); }
-    let output = command.output().map_err(|e| format!("Failed to launch Wan2GP adapter with {}: {e}", resolve_python().display()))?;
+    let output = command.output().map_err(|e| format!("Failed to launch Wan2GP adapter with {}: {e}", python.display()))?;
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if !output.status.success() {
